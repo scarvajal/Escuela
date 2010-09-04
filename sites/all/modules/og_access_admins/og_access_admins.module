@@ -1,0 +1,260 @@
+<?php
+// $Id: og_access_admins.module,v 1.1.2.3 2010/06/10 12:29:54 gibus Exp $
+/**
+ * @file
+ * The OG Access Admins module allows to restrict permissions
+ * to change audience/visibility of posts belonging to a group
+ * to only administrators of this group.
+ */
+
+/**
+* Implementation of hook_form_alter().
+*/
+function og_access_admins_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
+
+  // Alter the node creation/edition form.
+  if (isset($form['#node']) && $form_id == $form['#node']->type .'_node_form') {
+    // Process only posts in group.
+    if (!og_is_group_post_type($form['#node']->type))
+      return;
+    // Node admins and og admins should never be restricted.
+    if (user_access('administer nodes') || user_access('administer organic groups'))
+      return;
+    // Do nothing if audience/visibility is set to be controlled by
+    // any user/editor.
+    if (!variable_get('og_admins_control', 0))
+      return;
+
+    // Do nothing with audience if it is a node creation.
+    if (!empty($form['nid']['#value'])) {
+      // Disable groups where user is not group admin.
+      if (!empty($form['og_nodeapi']['visible']['og_groups'])) {
+        foreach ($form['og_nodeapi']['visible']['og_groups']['#options'] as $gid => $group) {
+          // Process groups gathered by optgroup.
+          if (is_array($group)) {
+            foreach ($group as $actual_gid => $actual_group) {
+              if (!array_key_exists($actual_gid, $user->og_groups) || !$user->og_groups[$actual_gid]['is_admin']) {
+                // Delete this group from og_groups choice.
+                unset($form['og_nodeapi']['visible']['og_groups']['#options'][$gid][$actual_gid]);
+                // Move this group to og_groups_inaccessible if set in
+                // default value.
+                if (in_array($actual_gid, $form['og_nodeapi']['visible']['og_groups']['#default_value']) ||
+                  // Move it also if it was previously in
+                  // og_groups_inaccessible when previewing node.
+                    (!empty($form_state['values']['og_groups_inaccessible']) && array_key_exists($actual_gid, $form_state['values']['og_groups_inaccessible']))) {
+                  $form['og_invisible']['og_groups_inaccessible']['#value'][$actual_gid] = $actual_gid;
+                }
+              }
+            }
+          }
+          // Process groups as checkboxes.
+          else {
+            if (!array_key_exists($gid, $user->og_groups) || !$user->og_groups[$gid]['is_admin']) {
+              // Delete this group from og_groups choice.
+              unset($form['og_nodeapi']['visible']['og_groups']['#options'][$gid]);
+              // Move this group to og_groups_inaccessible if set in
+              // default value.
+              if (in_array($gid, $form['og_nodeapi']['visible']['og_groups']['#default_value']) ||
+                // Move it also if it was previously in
+                // og_groups_inaccessible when previewing node.
+                  (!empty($form_state['values']['og_groups_inaccessible']) && array_key_exists($gid, $form_state['values']['og_groups_inaccessible']))) {
+                $form['og_invisible']['og_groups_inaccessible']['#value'][$gid] = $gid;
+              }
+            }
+          }
+
+          // Delete optgroup if empty.
+          if (!count($form['og_nodeapi']['visible']['og_groups']['#options'][$gid])) {
+            unset($form['og_nodeapi']['visible']['og_groups']['#options'][$gid]);
+          }
+        }
+
+        // Delete audience choice if emtpy.
+        if (!count($form['og_nodeapi']['visible']['og_groups']['#options'])) {
+          unset($form['og_nodeapi']['visible']['og_groups']);
+        }
+      }
+      else {
+        // Delete also in read_only mode when user is not group admin.
+        if (variable_get('og_audience_required', 0) && count($user->og_groups) == 1) {
+          $groups = $user->og_groups;
+          $gids = array_keys($groups);
+          $gid = $gids[0];
+          // When user is not group admin.
+          if (!array_key_exists($gid, $user->og_groups) || !$user->og_groups[$gid]['is_admin']) {
+            $node = node_load($form['nid']['#value']);
+            // Do not delete if node already belongs to this group.
+            if (!in_array($gid, $node->og_groups)) {
+              unset($form['og_nodeapi']['invisible']['og_groups']['#value'][$gid]);
+              unset($form['og_nodeapi']['visible']['og_groups_visible']);
+            }
+          }
+        }
+      }
+    }
+
+    // Get default settings for visibility
+    // (used when creating a new node).
+    $public = variable_get('og_visibility', 0) == OG_VISIBLE_CHOOSE_PUBLIC ? TRUE : FALSE;
+
+    // Disable public checkbox if user is not group admin.
+    $node = node_load($form['nid']['#value']);
+    // Keep current value when editing an existing node.
+    if (is_object($node)) {
+      $public = $node->og_public;
+    }
+    // Merge node groups, forced group (on read_only mode),
+    // and groups options (in creation mode).
+    $groups = array_merge(is_array($node->og_groups) ? $node->og_groups : array(), empty($form['og_nodeapi']['invisible']['og_groups']['#value']) ? array() : $form['og_nodeapi']['invisible']['og_groups']['#value'], empty($form['og_nodeapi']['visible']['og_groups']['#options']) ? array() : array_keys($form['og_nodeapi']['visible']['og_groups']['#options']));
+    // Check if user is admin of at leat one of these groups.
+    $is_grp_admin = array_filter($groups, create_function('$gid', 'global $user; return empty($user->og_groups[$gid]) ? FALSE : $user->og_groups[$gid]["is_admin"];'));
+    if (empty($is_grp_admin)) {
+      $form['og_nodeapi']['visible']['og_public'] = array('#type' => 'value', '#value' => $public);
+    }
+    else {
+      $form['og_nodeapi']['visible']['og_public']['#default_value'] = $public;
+    }
+
+    // Add an empty class value to og_public
+    // as placeholder for error class.
+    $form['og_nodeapi']['visible']['og_public']['#attributes'] = array('class' => '');
+
+    // Delete fieldset if not needed.
+    if (count($form['og_nodeapi']['visible']) < 2 || $form['og_nodeapi']['visible']['og_public']['#type'] == 'value') {
+      unset($form['og_nodeapi']['#type']);
+      unset($form['og_nodeapi']['#title']);
+      unset($form['og_nodeapi']['#collapsible']);
+      unset($form['og_nodeapi']['#collapsed']);
+    }
+  }
+
+  // Alter the og access settings form.
+  elseif ($form_id == 'og_access_settings') {
+    // Put new option after og_visibility
+    // and before og_private_groups.
+    $form['og_visibility']['#weight'] = 0;
+    $form['og_private_groups']['#weight'] = 2;
+    $form['buttons']['#weight'] = 3;
+
+    // Add new option.
+    $options = array(
+      t('Any author/editor of the group.'),
+      t('This group administrators only.'),
+    );
+    $form['og_admins_control'] = array(
+      '#weight' => 1,
+      '#type' => 'radios',
+      '#title' => t('Audience/visibility of posts belonging to a group can be changed by'),
+      '#default_value' => variable_get('og_admins_control', 0),
+      '#description' => t('Determine who is authorized to change audience of a post, i.e. which groups the post belongs to, and to make the post public. If the setting you want is disabled here, check the settings under <em>Visibility of posts</em> setting above. You cannot set audience/visibility to be changed if visibility of posts are always be public or private.'),
+      '#options' => $options,
+    );
+
+    // Load the form javascript to handle private groups / access
+    // control conflicts in the og access settings form.
+    $form['#pre_render'][] = 'og_access_admins_add_js';
+  }
+}
+
+// Load the form javascript to handle private groups / access control
+// conflicts in the og access settings form.
+function og_access_admins_add_js($form) {
+  drupal_add_js(drupal_get_path('module', 'og_access_admins') . '/og_access_admins.js');
+  return $form;
+}
+
+/**
+* Implementation of hook_nodeapi().
+*/
+function og_access_admins_nodeapi(&$node, $op, $form, $a4 = NULL) {
+  global $user;
+  if ($op == 'validate') {
+    // Process only posts in group.
+    if (!og_is_group_post_type($node->type))
+      return;
+    // Node admins and og admins should never be restricted.
+    if (user_access('administer nodes') || user_access('administer organic groups'))
+      return;
+    // Do nothing if audience/visibility is set to be controlled by
+    // any user/editor.
+    if (!variable_get('og_admins_control', 0))
+      return;
+
+    // Validate that public is checked only for groups where user
+    // is group admin in a node creation.
+    if ($form['#post']['og_public'] && !$form['#node']->nid) {
+      $groups = $form['#post']['og_groups'];
+      if (!empty($groups)) {
+        // Check if user is admin of at leat one of these groups.
+        $is_grp_admin = array_filter($groups, create_function('$gid', 'global $user; return empty($user->og_groups[$gid]) ? FALSE : $user->og_groups[$gid]["is_admin"];'));
+        if (empty($is_grp_admin)) {
+          form_set_error('og_public', format_plural(count($groups), 'You must be group administrator of group @groups to create a public post inside this group.', 'You must be group administrator of at least one of @groups to create a public post inside theses groups.', array('@groups' => implode(', ', array_map(create_function('$gid', '$grp_obj = node_load($gid); return empty($grp_obj) ? $gid : $grp_obj->title;'), $groups)))));
+        }
+      }
+    }
+    // Validate that if public is unchecked at least one group
+    // has to be checked in a node creation.
+    elseif (empty($form['#post']['og_groups']) && !$form['#node']->nid) {
+      // Do nothing if a group is forced
+      if (empty($form['og_nodeapi']['invisible']['og_groups']['#value'])) {
+        $groups = $form['og_nodeapi']['visible']['og_groups']['#options'];
+        if (!empty($groups)) {
+          // Check if user is admin of at leat one of these groups.
+          $is_grp_admin = array_filter(array_keys($groups), create_function('$gid', 'global $user; return empty($user->og_groups[$gid]) ? FALSE : $user->og_groups[$gid]["is_admin"];'));
+          if (empty($is_grp_admin)) {
+            form_set_error('og_public', format_plural(count($groups), 'You can only create a post inside a group, please check @groups.', 'You can only create a post inside a group, please check at least one group among @groups.', array('@groups' => implode(', ', array_map(create_function('$gid', '$grp_obj = node_load($gid); return empty($grp_obj) ? $gid : $grp_obj->title;'), $groups)))));
+          }
+        }
+        // User does not belong to any group.
+        else {
+            form_set_error('title', t('You must <a href="@join">join a group</a> before posting a %type.', array('@join' => url('og'), '%type' => node_get_types('name', $node->type))));
+        }
+      }
+    }
+
+    // Hacks validation errors when audience is required
+    // if og_groups is emty while og_groups_inaccessible is not.
+    if (variable_get('og_audience_required', 0)) {
+      if (empty($form['#post']['og_groups'])) {
+        if (!empty($form['og_invisible']['og_groups_inaccessible']['#value'])) {
+          // Error msg to search.
+          $t = get_t();
+          // Default error message when at least one group is available
+          if (!empty($form['og_nodeapi']['visible']['og_groups'])) {
+            $error_msg = $t('!name field is required.', array('!name' => $form['og_nodeapi']['visible']['og_groups']['#title']));
+          }
+          // Default error message when no group is available (but invisibly set)
+          else {
+            $error_msg = $t('You must <a href="@join">join a group</a> before posting on this web site.', array('@join' => url('og')));
+          }
+          // Get current errors.
+          $form_errors = form_get_errors();
+          if (!empty($form_errors)) {
+            // Reset errors.
+            form_set_error(NULL, '', TRUE);
+            // Rebuild errors.
+            foreach ($form_errors as $name => $message) {
+              // Skip audience required message.
+              if (!(($name == 'og_groups' || $name == 'title') && $message == $error_msg)) {
+                form_set_error($name, $message);
+              }
+            }
+          }
+
+          // Get current error messages queue and reset it.
+          $error_msgs = drupal_get_messages('error');
+          if (!empty($error_msgs)) {
+            // Rebuild error messages queue.
+            foreach ($error_msgs['error'] as $message) {
+              // Skip audience required message.
+              if ($message != $error_msg) {
+                drupal_set_message($message, 'error');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

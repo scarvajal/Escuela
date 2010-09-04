@@ -1,0 +1,5 @@
+/* $Id: phone.css,v 1.1 2010/07/19 22:34:32 thierrygd Exp $ */
+/* prevent input fields from being set to a percentage, such as 95% */
+div.form-item input.phone-field-textfield {
+  width: auto;
+}

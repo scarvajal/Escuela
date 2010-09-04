@@ -1,0 +1,16 @@
+// $Id: CHANGELOG.txt,v 1.1.2.1 2010/04/19 09:05:33 gibus Exp $
+
+OG Access Admins 6.x-1.0-beta2, 2010-04-19
+------------------------------------------
+by gibus: Fixed processing of *only* posts in group.
+#771802 by gibus: Fixed default visibility for group admins, and not
+ just simple group members, to respect settings of 'Visibility
+ chosen by author/editor using a checkbox on the posting form'
+ site-wide options.
+
+
+OG Access Admins 6.x-1.0-beta1, 2010-04-13
+------------------------------------------
+Initial release of OG Access Admins module. Allows to restrict
+permissions to change audience/visibility of posts belonging to a
+group to only administrators of this group.

@@ -1,0 +1,52 @@
+/* $Id: CHANGELOG.txt,v 1.1.2.3 2009/01/02 00:24:33 mgn Exp $ */
+
+Gradebook 6.x.1.x-dev, 2009-01-01
+----------------------
+- Fixed several incorrect arguments to taxonomy functions (changed between Drupal v5 and v6).
+- Added a check in gradebookapi_assignment_update to make sure table has a record of the assignment. 
+- Adjusted access arguments for admin/gradebook.
+- Relocated code to calculate term grade when an assignment changes categories.
+
+Gradebook 6.x.1.x-dev, 2008-12-26
+----------------------
+- Fixed mistaken use of is_null() when !empty() should have been used.
+- Clarified documentation of students and teacher roles when using og_gradebook. 
+- Allow sitewide student and teacher roles to be optional so it works correctly with og_gradebook.
+- Added comments for gradebookapi.module
+
+Gradebook 6.x.1.x-dev, 2008-12-12
+----------------------
+- Added embedded help via hook_help() in gradebook and gradebookapi
+
+Gradebook 6.x.1.x-dev, 2008-12-10
+----------------------
+- Modified css to add scrollbars to gradebook page to help UI for now - definitely needs improvement
+- Modified column order in theme_gradebook_page so total grade is next to student name
+- Separated out admin pages into .admin.inc files to reduce module footprint
+
+Gradebook 6.x.1.x-dev, 2008-12-9
+----------------------
+- [#340596] - extended initial patch to recalculate correctly when assignment is moved between categories
+- 6.x port is more or less complete with full functionality
+
+Gradebook 6.x.1.x-dev, 2008-12-7
+----------------------
+- Over the last week I've worked through found a series of bugs in the 5.x.1.x code
+- Mostly just figuring out the logic of the module - definitely need to add documentation
+- [#340596] - patches to fix gradebook_term grades so they recalculate correctly when grade category is modified
+
+Gradebook 6.x.1.x-dev, 2008-11-29
+----------------------
+- Found a series of real bugs in the 5.x.1.x code - posting questions on gradebook issue queue
+
+Gradebook 6.x.1.x-dev, 2008-11-28
+----------------------
+- gradebookapi debugging complete - seems to function ok
+- begin working on gradebook.module
+- following the 5.x to 6.x guide to module updates in the handbook and coder
+
+Gradebook 6.x.1.x-dev, 2008-11-27
+----------------------
+- Began port of 5.x.1.x-dev
+- implemented hook_schema() for gradebookapi.install file
+- began updating hook_menu() and forms to D6 FAPI

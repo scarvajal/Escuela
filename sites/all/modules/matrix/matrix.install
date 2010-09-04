@@ -1,0 +1,143 @@
+<?php
+// $Id: matrix.install,v 1.2.4.2.2.8 2010/01/16 04:53:29 aaron1234nz Exp $
+
+/**
+ * @file
+ *  Installer for the matrix module
+ *
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function matrix_install() {
+  drupal_load('module', 'content');
+  content_notify('uninstall', 'matrix');
+  drupal_install_schema('matrix');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function matrix_uninstall() {
+  drupal_load('module', 'content');
+  content_notify('uninstall', 'matrix');
+  drupal_uninstall_schema('matrix');
+}
+
+/**
+ * Implementation of hook_enable().
+ */
+function matrix_enable() {
+  drupal_load('module', 'content');
+  content_notify('enable', 'matrix');
+}
+
+/**
+ * Implementation of hook_disable().
+ */
+function matrix_disable() {
+  drupal_load('module', 'content');
+  content_notify('disable', 'matrix');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function matrix_schema() {
+  $schema['node_field_matrix_data'] = array(
+    'description' => t('The base table for matrix data.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t('The primary identifier for a node.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'vid' => array(
+        'description' => t('The current {node_revisions}.vid version identifier.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'field_name' => array(
+        'description' => t('The name of the CCK field.'),
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => ''),
+      'row' => array(
+        'description' => t('Row ID'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'col' => array(
+        'description' => t('Column ID'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0),
+      'value' => array(
+        'description' => t('Value of cell'),
+        'type' => 'text',
+        'not null' => TRUE,
+        'default' => ''),
+    ),
+    'indexes' => array('nid' => array('nid'), 'vid' => array('vid'))
+  );
+  return $schema;
+}
+
+/**
+
+function matrix_update_613() {
+  $result = db_query("SELECT field_name, global_settings FROM {node_field} WHERE type = 'matrix'");
+  while ($row = db_fetch_object($result)) {
+    $old = unserialize($row->global_settings);
+    foreach ($old as $item => $value) {
+      $a = explode('_', $item);
+      if ($a[0] == 'label' && $a[1] == 'row' && !empty($value)) {
+        $rows[] = $value;
+      }
+      if ($a[0] == 'label' && $a[1] == 'column' && !empty($value)) {
+        $column[] = $value;
+      }
+    }
+    $new = array('rows' => implode("\n", $rows), 'cols' => implode("\n", $column), 'size' => '15');
+    db_query("UPDATE {node_field} SET global_settings = '%s' WHERE field_name = '%s'", serialize($new), $row->field_name);
+  }
+}
+*/
+
+function matrix_update_620() {
+  $result = db_query("SELECT field_name, global_settings FROM {content_node_field} WHERE type = 'matrix'");
+  while ($row = db_fetch_object($result)) {
+    $old = unserialize($row->global_settings);
+    $old_rows = explode("\n", $old['rows']);
+    $old_cols = explode("\n", $old['cols']);
+    $old_size = $old['size'];
+
+    foreach ($old_cols as $value) {
+      $new_cols[] = array(
+       '#type' => 'textfield',
+       '#title' => trim($value),
+       '#required' => FALSE,
+      );
+    }
+    foreach ($old_rows as $value) {
+      $new_rows[] = array(
+        '#type' => 'title',
+        '#title' => trim($value),
+      );
+    }
+    $new = array('mode' => 'cols',
+                 'rows_elements' => serialize($new_rows),
+                 'cols_elements' => serialize($new_cols)
+                );
+    db_query("UPDATE {content_node_field} SET global_settings = '%s' WHERE field_name = '%s'", serialize($new), $row->field_name);
+  }
+
+  $res[] = array('success' => TRUE, 'query' => 'Matrix fields updated');
+  return $res;
+}

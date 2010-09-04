@@ -1,0 +1,20 @@
+; $Id: tablefield.info,v 1.1.2.1 2010/05/14 20:09:36 kevinhankens Exp $
+name = TableField
+description = Defines a generic tablular data field.
+dependencies[] = content
+package = CCK
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-05-05
+version = "6.x-1.2"
+core = "6.x"
+project = "tablefield"
+datestamp = "1273061710"
+
+
+; Information added by drupal.org packaging script on 2010-08-23
+version = "6.x-2.0"
+core = "6.x"
+project = "tablefield"
+datestamp = "1282582008"
+

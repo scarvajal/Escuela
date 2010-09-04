@@ -1,0 +1,44 @@
+<?php
+// $Id: tablefield.install,v 1.2.2.2 2010/05/14 20:09:36 kevinhankens Exp $
+
+/**
+* @file
+* Installation options for TableField
+*/
+
+/*
+* Implementation of hook_install().
+*/
+function tablefield_install() {
+  drupal_load('module', 'content');
+  content_notify('install', 'tablefield');
+}
+
+/**
+* Implementation of hook_uninstall().
+*/
+function tablefield_uninstall() {
+  drupal_load('module', 'content');
+  content_notify('uninstall', 'tablefield');
+}
+
+/**
+* Implementation of hook_enable().
+*
+* Notify content module when this module is enabled.
+*/
+function tablefield_enable() {
+  drupal_load('module', 'content');
+  content_notify('enable', 'tablefield');
+}
+
+/**
+* Implementation of hook_disable().
+*
+* Notify content module when this module is disabled.
+*/
+function tablefield_disable() {
+  drupal_load('module', 'content');
+  content_notify('disable', 'tablefield');
+}
+?>

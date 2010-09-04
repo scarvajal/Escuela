@@ -1,0 +1,31 @@
+<?php
+
+class SGPhoneNumberTestCase extends DrupalWebTestCase {
+  /**
+   * Implementation of getInfo()
+   *
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Singapore Phone number test'),
+      'description' => t('Tests various valid and invalid Singapore phone numbers for validity'),
+      'group' => t('Phone')
+    );
+  }
+
+  public function testPhoneSGValid() {
+    $this->assertTrue(valid_phone_number('sg', '61234567'), t('Test valid'));
+    $this->assertTrue(valid_phone_number('sg', '63829324'), t('Test valid'));
+    $this->assertTrue(valid_phone_number('sg', '67654321'), t('Test valid'));
+  }
+
+  public function testPhoneSGInvalid() {
+    $this->assertFalse(valid_phone_number('sg', '6123-4567'), t('Test invalid '));
+    $this->assertFalse(valid_phone_number('sg', '6-CALL-CPY'), t('Test invalid '));
+    $this->assertFalse(valid_phone_number('sg', '6123abcd'), t('Test invalid '));
+  }
+
+  public function testPhoneSGFormatting() {
+    //$this->assertEqual(format_phone_number('sg', '+6421123456', null), '+64 21 123 456', t('Check international mobile format'));
+  }
+}

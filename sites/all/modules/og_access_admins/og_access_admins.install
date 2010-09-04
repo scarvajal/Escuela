@@ -1,0 +1,11 @@
+<?php
+// $Id: og_access_admins.install,v 1.1 2010/04/13 13:24:19 gibus Exp $
+/**
+ * @file
+ * Database initialization.
+ */
+
+function og_access_admins_install() {
+  // Set the weight of the og_access_install.module to 2 so it is loaded after the og_access.module.
+  db_query("UPDATE {system} SET weight = 2 WHERE name = 'og_access_admins'");
+}

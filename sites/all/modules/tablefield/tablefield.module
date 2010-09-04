@@ -1,0 +1,525 @@
+<?php
+// $Id: tablefield.module,v 1.1.2.7 2010/08/23 16:28:25 kevinhankens Exp $
+
+/**
+ * @file
+ * This module provides a set of fields that can be used to store
+ * tabular data with a node. The implementation uses a custom CCK widget.
+ */
+
+/**
+ * Implementation of hook_theme().
+ */
+function tablefield_theme() {
+  return array(
+    'tablefield' => array(
+      'arguments' => array(
+        'element' => NULL,
+      ),
+    ),
+    'tablefield_formatter_default' => array(
+      'arguments' => array(
+        'element' => NULL,
+      ),
+    ),
+    'tablefield_view' => array(
+      'arguments' => array(
+        'header' => NULL,
+        'rows' => NULL,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field_info().
+ */
+function tablefield_field_info() {
+  return array(
+    'tablefield' => array(
+      'label' => t('Table Field'),
+      'description' => t('Stores a table of text fields'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field_settings().
+ */
+function tablefield_field_settings($op, $field) {
+  switch ($op) {
+    case 'form':
+      $form = array();
+      $options = array(0 => t('Plain text'), 1 => t('Filtered text (user selects input format)'));
+      $form['cell_processing'] = array(
+        '#type' => 'radios',
+        '#title' => t('Table cell processing'),
+        '#default_value' => is_numeric($field['cell_processing']) ? $field['cell_processing'] : 0,
+        '#options' => $options,
+      );
+      $form['default_message'] = array(
+        '#type' => 'markup',
+        '#value' => t('To specify a default table, use the &quot;Default Value&quot; above. There you can specify a default number of rows/columns and values.'),
+      );
+      return $form;
+
+    case 'save':
+      $values = array('cell_processing', 'count_cols', 'count_rows');
+
+      return $values;
+
+    case 'database columns':
+      $columns = array();
+
+      // Input format
+      if (!empty($field['cell_processing'])) {
+        $columns['format'] = array('type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'views' => FALSE);
+      }
+      $columns['value'] = array('type' => 'text');
+      return $columns;
+
+    case 'views data':
+      $data = content_views_field_views_data($field);
+      return $data;
+  }
+}
+
+/**
+ * Implementation of hook_field().
+ */
+function tablefield_field($op, &$node, $field, &$items, $teaser, $page) {
+  switch ($op) {
+    case 'presave':
+      foreach ($items as $delta => $table) {
+        if (empty($table['value'])) {
+          $tablefield = array();
+          foreach ($table['tablefield'] as $key => $value) {
+            $tablefield[$key] = $value;
+          }
+          $items[$delta]['value'] = serialize($tablefield);
+        }
+        elseif (empty($table['tablefield'])) {
+          // Batch processing only provides the 'value'
+          $items[$delta]['tablefield'] = unserialize($items[$delta]['value']);
+        }
+      }
+      break;
+    case 'load':
+      foreach ($items as $delta => $table) {
+        $items[$delta]['tabledata'] = tablefield_rationalize_table(unserialize($table['value']));
+      }
+      break;
+    case 'sanitize':
+      // We need to make the table data available to display
+      foreach ($items as $delta => $table) {
+        if (!empty($table['tablefield'])) {
+          $tabledata = tablefield_rationalize_table($table['tablefield']);
+        }
+        elseif (!empty($table['value'])) {
+          $tabledata = tablefield_rationalize_table(unserialize($table['value']));
+        }
+    
+        // Multivalue fields will have one row in the db, so make sure that it isn't empty 
+        if (isset($tabledata)) {
+
+          // Run the table body through input filters
+          if (!empty($tabledata)) {
+            foreach ($tabledata as $row_key => $row) {
+              foreach ($row as $col_key => $cell) {
+                if (!empty($field['cell_processing'])) {
+                  $tabledata[$row_key][$col_key] = array('data' => check_markup($cell, $table['format']), 'class' => 'row-' . $row_key . ' col-' . $col_key);
+                }
+                else {
+                  $tabledata[$row_key][$col_key] = array('data' => check_plain($cell), 'class' => 'row-' . $row_key . ' col-' . $col_key);
+                }
+              }
+            }
+          }
+
+          $header = array_shift($tabledata);
+
+          $items[$delta]['value'] = theme('tablefield_view', $header, $tabledata, $field['field_name'], $delta);
+        }
+      }
+
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_content_is_empty().
+ */
+function tablefield_content_is_empty($item, $field) {
+  // Remove the preference fields to see if the table cells are all empty
+  unset($item['tablefield']['count_cols']);
+  unset($item['tablefield']['count_rows']);
+  unset($item['tablefield']['rebuild']);
+  if (!empty($item['tablefield'])) {
+    foreach ($item['tablefield'] as $cell) {
+      if (!empty($cell)) {
+        return FALSE;
+      }
+    }
+  }
+
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_field_formatter_info().
+ */
+function tablefield_field_formatter_info() {
+  return array(
+    'default' => array(
+      'label' => t('Tabular View'), 
+      'multiple values' => CONTENT_HANDLE_CORE, 
+      'field types' => array('tablefield'),
+    ),
+  ); 
+}
+
+/**
+ * Theme function for default table display 
+ */
+function theme_tablefield_formatter_default($element) {
+  return $element['#item']['value'];
+}
+
+/**
+ * Theme function for form display 
+ */
+function theme_tablefield($element) {
+  return $element['#children'];
+}
+
+/**
+ * Theme function for table view 
+ */
+function theme_tablefield_view($header, $rows, $field_name, $delta) {
+  $class_field_name = str_replace('_', '-', $field_name);
+  return '<div id="tablefield-wrapper-' . $class_field_name . '-' . $delta . '" class="tablefield-wrapper">' . theme('table', $header, $rows, array('id' => 'tablefield-' . $class_field_name . '-' . $delta, 'class' => 'tablefield')) . '</div>';
+}
+
+/**
+ * Implementation of hook_widget_info().
+ */
+function tablefield_widget_info() {
+  return array(
+    'tablefield' => array(
+      'label' => t('Table field'),
+      'field types' => array('tablefield'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_DEFAULT,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implementation of FAPI hook_elements().
+ */
+function tablefield_elements() {
+  drupal_add_css(drupal_get_path('module', 'tablefield') . '/tablefield.css');
+  return array(
+    'tablefield' => array(
+      '#input' => TRUE,
+      '#columns' => array('value'), '#delta' => 0,
+      '#process' => array('tablefield_process'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_widget().
+ *
+ * Attach a single form element to the form. It will be built out and
+ * validated in the callback(s) listed in hook_elements. We build it
+ * out in the callbacks rather than here in hook_widget so it can be
+ * plugged into any module that can provide it with valid
+ * $field information.
+ *
+ * Content module will set the weight, field name and delta values
+ * for each form element. This is a change from earlier CCK versions
+ * where the widget managed its own multiple values.
+ *
+ * If there are multiple values for this field, the content module will
+ * call this function as many times as needed.
+ *
+ * @param $form
+ *   the entire form array, $form['#node'] holds node information
+ * @param $form_state
+ *   the form_state, $form_state['values'][$field['field_name']]
+ *   holds the field's form values.
+ * @param $field
+ *   the field array
+ * @param $items
+ *   array of default values for this field
+ * @param $delta
+ *   the order of this item in the array of subelements (0, 1, 2, etc)
+ *
+ * @return
+ *   the form item for a single element for this field
+ */
+function tablefield_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  $form['#attributes']['enctype'] = 'multipart/form-data';
+
+  $element = array(
+    '#type' => $field['widget']['type'],
+    '#default_value' => isset($items[$delta]) ? $items[$delta] : NULL,
+  );
+  return $element;
+}
+
+
+/**
+ * Process the tablefield
+ */
+function tablefield_process($element, $edit, $form_state, $form) {
+  $delta = $element['#delta'];
+  $field = $form['#field_info'][$element['#field_name']];
+
+  if (isset($element['#value']['tablefield'])) {
+    // A form was submitted
+    $default_value = tablefield_rationalize_table($element['#value']['tablefield']);
+
+    // Catch empty form sumissions for required tablefields
+    if ($form_state['submitted'] && $element['#required'] && tablefield_content_is_empty($element['#value'], $field)) {
+      form_set_error($element['#field_name'], t('@field is a required field.', array('@field' => $form[$element['#parents'][0]]['#title'])));
+    }
+  }
+  elseif (isset($element['#default_value']['value'])) {
+    // Default from database
+    $default_value = tablefield_rationalize_table(unserialize($element['#default_value']['value']));
+  }
+  else {
+    // Get the widget default value
+    $default_count_cols = $field['widget']['default_value'][0]['tablefield']['count_cols'];
+    $default_count_rows = $field['widget']['default_value'][0]['tablefield']['count_rows'];
+  }
+
+  $description = $element['#description'] ? $element['#description'] . ' ' : '';
+  $description .= t('The first row will appear as the table header.');
+
+  $element['tablefield'] = array(
+    '#title' => $field['widget']['label'],
+    '#description' => $description,
+    '#attributes' => array('id' => 'node-tablefield-' . str_replace('_', '-', $element['#field_name']) .'-'. $delta, 'class' => 'node-tablefield'),
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#collapsible' => FALSE,
+    '#field_name' => $element['#field_name'],
+    '#type_name' => $element['#type_name'],
+    '#delta' => $element['#delta'],
+    '#columns' => $element['#columns'],
+  );
+
+  // Give the fieldset the appropriate class if it is required
+  if ($element['#required']) {
+    $element['tablefield']['#title'] .= ' <span class="form-required" title="' . t('This field is required') . '">*</span>';
+  }
+
+  if ($form['#id'] == 'content-field-edit-form') {
+    $element['tablefield']['#description'] = t('The first row will appear as the table header. This form defines the table field defaults, but the number of rows/columns and content can be overridden on a per-node basis.');
+  }
+
+  // Determine how many rows/columns are saved in the data
+  if (!empty($default_value)) {
+    $count_rows = count($default_value);
+    foreach ($default_value as $row) {
+      $temp_count = count($row);
+      if ($temp_count > $count_cols) {
+        $count_cols = $temp_count; 
+      }
+    }
+  }
+  else {
+    $count_cols = $default_count_cols;
+    $count_rows = $default_count_rows;
+  }
+
+  // Override the number of rows/columns if the user rebuilds the form
+  if (!empty($edit['tablefield']['count_cols'])) {
+    $count_cols = $edit['tablefield']['count_cols'];
+  }
+  if (!empty($edit['tablefield']['count_rows'])) {
+    $count_rows = $edit['tablefield']['count_rows'];
+  }
+
+  // Allow the user to import a csv file
+  $element['tablefield']['import'] = array(
+    '#type' => 'fieldset',
+    '#tree' => FALSE,
+    '#title' => t('Import from CSV'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $element['tablefield']['import']['tablefield_csv_' . $field['field_name'] . '_' . $delta] = array(
+    '#title' => 'File upload',
+    '#type' => 'file',
+  );
+  $element['tablefield']['import']['rebuild_' . $field['field_name'] . '_' . $delta] = array(
+    '#type' => 'button',
+    '#validate' => array(),
+    '#limit_validation_errors' => array('title'),
+    '#executes_submit_callback' => TRUE,
+    '#validate' => array('tablefield_import_csv'),
+    '#submit' => array('tablefield_rebuild_form', 'node_form_build_preview'),
+    '#value' => 'Import File to: ' . $field['field_name'] . '-' . $delta,
+    '#attributes' => array(
+      'class' => array('tablefield-rebuild'),
+      'id' => 'tablefield-import-button-' . $field['field_name'] . '-' . $delta,
+    ),
+  );
+
+  // Render the form table
+  $element['tablefield']['a_break'] = array(
+    '#type' => 'markup',
+    '#value' => '<table>',
+  );
+  for ($i = 0; $i < $count_rows; $i++) {
+    $element['tablefield']['b_break' . $i] = array(
+      '#type' => 'markup',
+      '#value' => '<tr>',
+    );
+    for ($ii = 0; $ii < $count_cols; $ii++) {
+      $element['tablefield']['cell_' . $i . '_' . $ii] = array(
+        '#type' => 'textfield',
+        '#size' => 10,
+        '#attributes' => array('id' => 'tablefield-' . str_replace('_', '-', $element['#field_name']) .'-'. $delta . '-cell-' . $i . '-' . $ii),
+        '#default_value' => (empty($field_value)) ? $default_value[$i][$ii] : $field_value,
+        '#prefix' => '<td>',
+        '#suffix' => '</td>',
+      );
+    }
+    $element['tablefield']['d_break' . $i] = array(
+      '#type' => 'markup',
+      '#value' => '</tr>',
+    );
+  }
+  $element['tablefield']['t_break' . $i] = array(
+    '#type' => 'markup',
+    '#value' => '</table>',
+  );
+
+  // Allow the user to add more rows/columns
+  $element['tablefield']['count_cols'] = array(
+    '#title' => t('How many Columns'),
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#prefix' => '<div class="clear-block">',
+    '#suffix' => '</div>',
+    //'#default_value' => $count_cols,
+    '#value' => $count_cols,
+  );
+  $element['tablefield']['count_rows'] = array(
+    '#title' => t('How many Rows'),
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#prefix' => '<div class="clear-block">',
+    '#suffix' => '</div>',
+    //'#default_value' => $count_rows,
+    '#value' => $count_rows,
+  );
+  $element['tablefield']['rebuild'] = array(
+    '#type' => 'button',
+    '#value' => t('Rebuild Table'),
+    '#attributes' => array('class' => 'tablefield-rebuild'),
+  );
+
+  if (!empty($field['cell_processing'])) {
+    $filter_key = $element['#columns'][0];
+    $format = isset($element['#value'][$filter_key]) ? $element['#value'][$filter_key] : FILTER_FORMAT_DEFAULT;
+    $parents = array_merge($element['#parents'] , array($filter_key));
+    $element[$filter_key] = filter_form($format, 1, $parents);
+  }
+
+  return $element;
+}
+
+function tablefield_rationalize_table($tablefield) {
+  $count_cols = $tablefield['count_cols'];
+  unset($tablefield['count_cols']);
+  $count_rows = $tablefield['count_rows'];
+  unset($tablefield['count_rows']);
+  unset($tablefield['rebuild']);
+  // Rationalize the table data
+  if (!empty($tablefield)) {
+  foreach ($tablefield as $key => $value) {
+    preg_match('/cell_(.*)_(.*)/', $key, $cell);
+    // $cell[1] is row count $cell[2] is col count
+    if ((int) $cell[1] < $count_rows && $cell['2'] < $count_cols) {
+      $tabledata[$cell[1]][$cell[2]] = $value;
+    }
+  }
+  }
+
+  return $tabledata;
+}
+
+/**
+ * Validation function to help import data from a CSV file
+ * @param array $form
+ * @param array $form_state
+ */
+function tablefield_import_csv($form, &$form_state) {
+  // Look for the field name by checking on the clicked button
+  if(preg_match('/edit-rebuild-(.*)/', $form_state['clicked_button']['#id'], $id)) {
+    // Extract the field and file name from the id of the clicked button
+    $file_name = preg_replace('/\-/', '_', $id[1]);
+    preg_match('/_([0-9]+)$/', $file_name, $field_delta);
+    // Extract the field delta from the field name
+    $delta = $field_delta[1];
+    $field_name = preg_replace('/_([0-9]+)$/', '', $file_name);
+
+    // @todo fail out if no file
+    // @todo validate file type
+    $file = file_save_upload('tablefield_csv_' . $file_name);
+
+    if (is_object($file)) {
+      $csv = file($file->filepath);
+
+      tablefield_delete_table_values($form_state['values'][$field_name][$delta]['tablefield']);
+
+      // Populate CSV values
+      $max_col_count = 0;
+      $row_count = 0;
+      foreach ($csv as $row_id => $row_csv) {
+        $row = explode(',', $row_csv);
+        $col_count = 0; 
+        foreach ($row as $col_id => $col) {
+          $form_state['values'][$field_name][$delta]['tablefield']['cell_' . $row_id . '_' . $col_id] = check_plain($col);
+          $col_count++;
+        }
+        $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
+        $row_count++;
+      }
+      
+      $form_state['values'][$field_name][$delta]['tablefield']['count_cols'] = $max_col_count;
+      $form_state['values'][$field_name][$delta]['tablefield']['count_rows'] = $row_count;
+      $form_state['values']['tablefield_import'] = TRUE;
+      //$form_state['rebuild'] = TRUE;
+
+      drupal_set_message(t('Successfully imported @file. Please preview the result before saving.', array('@file' => $file->filename)));
+    }
+
+    // Remove the temporary file
+    db_query("DELETE FROM {files} WHERE fid = %d", $file->fid);
+    file_delete($file->filepath);
+  }
+}
+
+/**
+ * Helper function to remove all values in a particular table
+ * @param array $tablefield
+ */
+function tablefield_delete_table_values(&$tablefield) {
+  // Empty out previously entered values
+  foreach ($tablefield as $key => $value) {
+    if (strpos($key, 'cell_') === 0) {
+      $tablefield[$key] = '';
+    }
+  }
+}
+
+

@@ -1,0 +1,14 @@
+; $Id: og_access_admins.info,v 1.1 2010/04/13 13:24:19 gibus Exp $
+name = Organic groups access control for group admins only
+description = "Restrict audience/visibility control to group admins."
+package = "Organic groups"
+dependencies[] = og
+dependencies[] = og_access
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "og_access_admins"
+datestamp = "1278835100"
+

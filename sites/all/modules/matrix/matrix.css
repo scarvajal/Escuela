@@ -1,0 +1,34 @@
+/* Display settings */
+.matrix-table {
+}
+
+.matrix-first-col {
+  font-weight:bold;
+}
+
+.matrix-links {
+}
+
+/* Administration settings */
+.matrix-settings-title,
+.matrix-settings-type,
+.matrix-settings-edit {
+  display:inline;
+	width:50px;
+	overflow:hidden;
+}
+
+.matrix-boxes-selection,
+#edit-element-type-wrapper,
+#edit-title-wrapper,
+#edit-size-wrapper,
+#edit-options-wrapper,
+#edit-calc-wrapper {
+ float:left;
+ padding-left:20px;
+}
+
+#matrix-clear {
+  clear:both;
+}
+

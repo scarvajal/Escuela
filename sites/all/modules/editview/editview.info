@@ -1,0 +1,13 @@
+; $Id: editview.info,v 1.4 2009/02/17 00:39:01 agileware Exp $
+name = Editview
+description = "Allows users to add and edit nodes in a view."
+core = 6.x
+package = Views
+dependencies[] = views
+
+; Information added by drupal.org packaging script on 2010-08-21
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "editview"
+datestamp = "1282349207"
+

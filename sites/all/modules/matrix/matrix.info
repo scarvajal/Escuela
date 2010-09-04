@@ -1,0 +1,12 @@
+; $Id: matrix.info,v 1.2.2.1 2009/02/03 02:08:06 aaron1234nz Exp $
+name = Matrix Field
+description = Defines field type for table with textfields.
+package = CCK
+core = 6.x
+dependencies[] = content
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-2.x-dev"
+core = "6.x"
+project = "matrix"
+datestamp = "1278834835"
+

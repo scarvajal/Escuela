@@ -1,0 +1,73 @@
+# $Id: og_access_admins.fr.po,v 1.1.2.1 2010/05/31 13:29:02 gibus Exp $
+#
+# French translation of Drupal (general)
+# Copyright 2010 Sopinspace <gerald.sedrati-dinet@sopinspace.com>
+# Generated from files:
+#  og_access_admins.module: n/a
+#  og_access_admins.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 6.x-1.0-beta1\n"
+"POT-Creation-Date: 2010-04-13 13:15+0200\n"
+"PO-Revision-Date: 2010-04-13 13:15+0200\n"
+"Last-Translator: Gérald SÉDRATI-DINET <gerald.sedrati-dinet@sopinspace.com>\n"
+"Language-Team: French <gerald.sedrati-dinet@sopinspace.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n>1);\n"
+
+#: og_access_admins.module:136
+msgid "Any author/editor of the group."
+msgstr "N'importe quel auteur du groupe."
+
+#: og_access_admins.module:137
+msgid "This group administrators only."
+msgstr "Seulement les administrateurs du groupe."
+
+#: og_access_admins.module:142
+msgid "Audience/visibility of posts belonging to a group can be changed by"
+msgstr "Le public visé et la visibilité des contributions appartenant à un groupe peuvent être changés par"
+
+#: og_access_admins.module:144
+msgid "Determine who is authorized to change audience of a post, i.e. which groups the post belongs to, and to make the post public. If the setting you want is disabled here, check the settings under <em>Visibility of posts</em> setting above. You cannot set audience/visibility to be changed if visibility of posts are always be public or private."
+msgstr "Détermine qui est autorisé à changer le public visé d'une contribution, i.e. à quels groupes appartient la contribution, et à la rendre publique. Si le paramètre désiré est désactivé, vérifiez les paramètres dans <em>Visibilité des contributions</em> ci-dessus. Vous ne pouvez changer le public visé et la visibilité si les contributions sont configurées pour être toujours publiques ou privées."
+
+#: og_access_admins.module:202
+msgid "You must <a href=\"@join\">join a group</a> before posting a %type."
+msgstr "Vous devez <a href=\"@join\">rejoindre un groupe</a> avant de poster un(e) %type."
+
+#: (duplicate) og_access_admins.module:216 
+msgid "!name field is required."
+msgstr "Le champ !name est obligatoire."
+
+#: (duplicate) og_access_admins.module:220 
+msgid "You must <a href=\"@join\">join a group</a> before posting on this web site."
+msgstr "Vous devez <a href=\"@join\">rejoindre un groupe</a> avant de soumettre une contribution sur ce site web."
+
+#: og_access_admins.module:183
+msgid "You must be group administrator of group @groups to create a public post inside this group."
+msgid_plural "You must be group administrator of at least one of @groups to create a public post inside theses groups."
+msgstr[0] "Vous devez être administrateur du groupe @groups pour créér une contribution au sein de ce groupe."
+msgstr[1] "Vous devez être administrateur d'au moins un des groupes @groups pour créér une contribution au sein de ce groupe."
+
+#: og_access_admins.module:197
+msgid "You can only create a post inside a group, please check @groups."
+msgid_plural "You can only create a post inside a group, please check at least one group among @groups."
+msgstr[0] "Vous pouvez uniquement créer une contribution au sein d'un groupe, merci de cocher @groups."
+msgstr[1] "Vous pouvez uniquement créer une contribution au sein d'un groupe, merci de cocher au moins un groupe parmis @groups."
+
+#: og_access_admins.info:0
+msgid "Organic groups access control for group admins only"
+msgstr "Contrôle d'accès par groupe uniquement pour les administrateurs de groupe"
+
+#: og_access_admins.info:0
+msgid "Restrict audience/visibility control to group admins."
+msgstr "Restreint le contrôle du public visé et de la visibilité au administrateurs de groupe."
+
+#: og_access_admins.info:0
+msgid "Organic groups"
+msgstr "Groupes"
+
